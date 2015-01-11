@@ -16,9 +16,28 @@ class Robot : public SampleRobot
 	SerialPort *serial_port;
 	bool first_iteration;
 
+    // Channels for the wheels
+    const static int frontLeftChannel	= 1;		// PWM Port Number
+    const static int rearLeftChannel	= 0;		// PWM Port Number
+    const static int frontRightChannel	= 3;		// PWM Port Number
+    const static int rearRightChannel	= 2;		// PWM Port Number
+    const static int joystickChannel	= 0;		// First and only Joystick
+    const static int gyroChannel		= 0;		// Gyro in Analog Input "0"
+
+	RobotDrive robotDrive;	// robot drive system
+	Joystick stick;			// only joystick
+//	Gyro driveGyro;			// Gyro instance for RobotDrive
+
 public:
-	Robot()
+	float Kp = 0.03;		// Proportional constant for the Gyro
+	Robot() :
+			robotDrive(frontLeftChannel, rearLeftChannel,
+					   frontRightChannel, rearRightChannel),	// these must be initialized in the same order
+			stick(joystickChannel)							// as they are declared above.
 	{
+		robotDrive.SetExpiration(0.1);
+		robotDrive.SetInvertedMotor(RobotDrive::kFrontRightMotor, true);	// invert the right side motors
+		robotDrive.SetInvertedMotor(RobotDrive::kRearLeftMotor,   true);	// you may need to change or remove this to match your robot
 	}
 
 	void RobotInit() {
@@ -43,11 +62,11 @@ public:
 		Wait(2.0); 				//    for 10 seconds
 	}
 
-	/**
-	 * Runs the motors with arcade steering.
-	 */
+
 	void OperatorControl(void)
 	{
+		robotDrive.SetSafetyEnabled(false);
+
 		while (IsOperatorControl())
 		{
 			if ( first_iteration ) {
@@ -71,6 +90,12 @@ public:
 			//SmartDashboard::PutBoolean("IMU_IsMoving", imu->IsMoving());
 			//SmartDashboard::PutNumber("IMU_Temp_C", imu->GetTempC());
             SmartDashboard::PutBoolean("IMU_IsCalibrating", imu->IsCalibrating());
+
+        	// Use the joystick X axis for lateral movement, Y axis for forward movement, and Z axis for rotation.
+        	// This sample does not use field-oriented drive, so the gyro input is set to zero.
+
+    		float angle = imu->GetYaw();
+			robotDrive.MecanumDrive_Cartesian(stick.GetX(), stick.GetY(), stick.GetZ(), -angle *Kp);
 
 			Wait(0.2);				// wait for a while
 		}
